@@ -19,7 +19,7 @@ local TabSettingsContent = Instance.new("Frame")
 local FlyBtn = Instance.new("TextButton")
 local NoclipBtn = Instance.new("TextButton")
 local EspBtn = Instance.new("TextButton")
-local InfJumpBtn = Instance.new("TextButton") -- Новая кнопка
+local InfJumpBtn = Instance.new("TextButton")
 
 -- Вкладка "Авто-Фарм"
 local AutoCollectBtn = Instance.new("TextButton")
@@ -122,7 +122,7 @@ end
 setupGridButton(FlyBtn, "Fly: OFF", 0.05, 20, TabMainContent)
 setupGridButton(NoclipBtn, "Noclip: OFF", 0.52, 20, TabMainContent)
 setupGridButton(EspBtn, "Player ESP: OFF", 0.05, 85, TabMainContent)
-setupGridButton(InfJumpBtn, "Inf Jump: OFF", 0.52, 85, TabMainContent) -- Разместили рядом с ESP
+setupGridButton(InfJumpBtn, "Inf Jump: OFF", 0.52, 85, TabMainContent)
 
 setupGridButton(AutoCollectBtn, "Auto Collect: OFF", 0.05, 20, TabFarmContent)
 setupGridButton(AutoDuelBtn, "Auto Duel: OFF", 0.52, 20, TabFarmContent)
@@ -278,8 +278,9 @@ end
 EspBtn.MouseButton1Click:Connect(function() espEnabled = not espEnabled EspBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(45, 40, 55) EspBtn.Text = espEnabled and "Player ESP: ON" or "Player ESP: OFF" if not espEnabled then for _, h in pairs(espHighlights) do if h then h:Destroy() end end espHighlights = {} end end)
 task.spawn(function() while true do if espEnabled then updateESP() end task.wait(1) end end)
 
--- 4. Infinite Jump (Бесконечный прыжок вверх)
+-- 4. Infinite Jump (Пофиксили баг с ресетом)
 local infJump = false
+local lastJump = 0
 InfJumpBtn.MouseButton1Click:Connect(function()
     infJump = not infJump
     InfJumpBtn.BackgroundColor3 = infJump and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(45, 40, 55)
@@ -287,14 +288,18 @@ InfJumpBtn.MouseButton1Click:Connect(function()
 end)
 
 game:GetService("UserInputService").JumpRequest:Connect(function()
-    if infJump and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-        player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    if infJump and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        local hrp = player.Character.HumanoidRootPart
+        if humanoid and tick() - lastJump > 0.15 then
+            lastJump = tick()
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, humanoid.JumpPower or 50, hrp.Velocity.Z)
+        end
     end
 end)
 
 -- 5. Auto Collect
 local autoCollect = false
-CoinBtn = AutoCollectBtn -- Перепривязка для обратной совместимости
 AutoCollectBtn.MouseButton1Click:Connect(function()
     autoCollect = not autoCollect
     AutoCollectBtn.BackgroundColor3 = autoCollect and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(45, 40, 55)
