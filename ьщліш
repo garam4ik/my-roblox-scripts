@@ -1,1 +1,68 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/wally-rblx/Library/main/library.lua"))()
+local Window = Library:CreateWindow("Coco's TT 2")
 
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+local Flying = false
+local Noclip = false
+local Speed = 100
+
+local BodyVelocity = Instance.new("BodyVelocity")
+local BodyGyro = Instance.new("BodyGyro")
+BodyVelocity.MaxForce = Vector3.new(1, 1, 1) * math.huge
+BodyGyro.MaxTorque = Vector3.new(1, 1, 1) * math.huge
+
+-- Оновлення персонажа після респавну
+Player.CharacterAdded:Connect(function(char)
+    Character = char
+    Humanoid = char:WaitForChild("Humanoid")
+    RootPart = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- Ноукліп цикл
+game:GetService("RunService").Stepped:Connect(function()
+    if Noclip and Character then
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- Функція польоту
+task.spawn(function()
+    while true do
+        if Flying and RootPart and Humanoid then
+            local Camera = workspace.CurrentCamera
+            BodyVelocity.Velocity = Humanoid.MoveDirection * Speed
+            BodyGyro.CFrame = Camera.CFrame
+        end
+        task.wait()
+    end
+end)
+
+-- Меню керування
+Window:Toggle("Політ (Fly)", {}, function(state)
+    Flying = state
+    if Flying then
+        BodyVelocity.Parent = RootPart
+        BodyGyro.Parent = RootPart
+        Humanoid.PlatformStand = true
+    else
+        BodyVelocity.Parent = nil
+        BodyGyro.Parent = nil
+        Humanoid.PlatformStand = false
+    end
+end)
+
+Window:Toggle("Проходження крізь стіни (Noclip)", {}, function(state)
+    Noclip = state
+end)
+
+Window:Slider("Швидкість польоту", {min = 16, max = 500, default = 100}, function(value)
+    Speed = value
+end)
