@@ -1,17 +1,4 @@
--- Автоматичний телепорт в плейс "Steal a Brainrot" (ID: 111162319080352)
-local TeleportService = game:GetService("TeleportService")
-local placeId = 111162319080352
-
-local success, err = pcall(function()
-    TeleportService:Teleport(placeId, game.Players.LocalPlayer)
-end)
-
-if not success then
-    warn("Не вдалося телепортувати: " .. tostring(err))
-end
-
--- Основний код GUI (активується, якщо телепорт завантажиться)
-local oldGui = game.CoreGui:FindFirstChild("CocoTT2_Gui") or game.Players.LocalPlayer:FindFirstChildOfClass("PlayerGui"):FindFirstChild("CocoTT2_Gui")
+local oldGui = game.CoreGui:FindFirstChild("CocoMM2_MegaGui") or game.Players.LocalPlayer:FindFirstChildOfClass("PlayerGui"):FindFirstChild("CocoMM2_MegaGui")
 if oldGui then oldGui:Destroy() end
 
 local Player = game.Players.LocalPlayer
@@ -19,8 +6,14 @@ local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
+-- Змінні для функцій
+local Noclip = false
+local Speed = 16
+local Jump = 50
+local XrayActive = false
+local AutoFarm = false
+local KillAura = false
 local SpinActive = false
-local Speed = 150
 local FixedY = 0
 
 local Platform = Instance.new("Part")
@@ -34,113 +27,295 @@ local Spin = Instance.new("BodyAngularVelocity")
 Spin.MaxTorque = Vector3.new(0, math.huge, 0)
 Spin.AngularVelocity = Vector3.new(0, 5000, 0)
 
-local function MakeSmallCube()
-    if Character then
-        for _, part in pairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                part.Transparency = 1
-            elseif part:IsA("CharacterMesh") or part:IsA("Shirt") or part:IsA("Pants") or part:IsA("Accessory") then
-                part:Destroy()
-            end
-        end
-        
-        local ExistingCube = RootPart:FindFirstChild("VisualCube")
-        if ExistingCube then ExistingCube:Destroy() end
-
-        local Cube = Instance.new("Part")
-        Cube.Name = "VisualCube"
-        Cube.Size = Vector3.new(1.5, 1.5, 1.5)
-        Cube.Color = Color3.fromRGB(85, 255, 85)
-        Cube.CanCollide = false
-        Cube.Transparency = 0
-        Cube.Parent = RootPart
-        
-        local Weld = Instance.new("Weld")
-        Weld.Part0 = RootPart
-        Weld.Part1 = Cube
-        Weld.C0 = CFrame.new(0, 0, 0)
-        Weld.Parent = Cube
+-- Допоміжні функції
+local function UpdateMovement()
+    if Humanoid then
+        Humanoid.WalkSpeed = Speed
+        Humanoid.JumpPower = Jump
     end
-end
-
-local function UpdateWalkSpeed()
-    if Humanoid then Humanoid.WalkSpeed = Speed end
 end
 
 Player.CharacterAdded:Connect(function(char)
     Character = char
     Humanoid = char:WaitForChild("Humanoid")
     RootPart = char:WaitForChild("HumanoidRootPart")
-    task.wait(0.5)
-    MakeSmallCube()
-    UpdateWalkSpeed()
+    UpdateMovement()
 end)
 
+-- Головний цикл фізики (Noclip, Платформа, Крутилка)
 game:GetService("RunService").Stepped:Connect(function()
-    if Character and Humanoid and RootPart then
-        if SpinActive then
+    if Character and RootPart and Humanoid then
+        if Noclip or SpinActive then
             for _, part in pairs(Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+                if part:IsA("BasePart") then part.CanCollide = false end
             end
+        end
+        if SpinActive then
             RootPart.Velocity = Vector3.new(RootPart.Velocity.X, 0, RootPart.Velocity.Z)
             RootPart.CFrame = CFrame.new(RootPart.Position.X, FixedY, RootPart.Position.Z) * CFrame.Angles(0, math.rad(RootPart.Orientation.Y), 0)
             Platform.CanCollide = true
             Platform.CFrame = CFrame.new(RootPart.Position.X, FixedY - 2.2, RootPart.Position.Z)
             Spin.Parent = RootPart
         else
-            Platform.CanCollide = false
-            Platform.CFrame = CFrame.new(0, 9999, 0)
+            if not AutoFarm then
+                Platform.CanCollide = false
+                Platform.CFrame = CFrame.new(0, 9999, 0)
+            end
             Spin.Parent = nil
         end
     end
 end)
 
+-- Створення інтерфейсу на весь екран
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CocoTT2_Gui"
-local successGui, _ = pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
-if not successGui then ScreenGui.Parent = Player:FindFirstChildOfClass("PlayerGui") end
+ScreenGui.Name = "CocoMM2_MegaGui"
+local success, _ = pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+if not success then ScreenGui.Parent = Player:FindFirstChildOfClass("PlayerGui") end
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 200, 0, 150)
-MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Size = UDim2.new(0.8, 0, 0.8, 0)
+MainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.Text = "Coco's Brainrot Script"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Title.Font = Enum.Font.SourceSansBold
-Title.Parent = MainFrame
+-- Кнопка закриття меню (мінімізація)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 40, 0, 40)
+CloseBtn.Position = UDim2.new(1, -40, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.TextSize = 20
+CloseBtn.Parent = MainFrame
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
-local SpinBtn = Instance.new("TextButton")
-SpinBtn.Size = UDim2.new(0.9, 0, 0, 50)
-SpinBtn.Position = UDim2.new(0.05, 0, 0.35, 0)
-SpinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpinBtn.Text = "Гіпер-Крутилка: OFF"
-SpinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpinBtn.Font = Enum.Font.SourceSans
-SpinBtn.TextSize = 14
-SpinBtn.Parent = MainFrame
+-- Панель вкладок (зліва)
+local TabPanel = Instance.new("Frame")
+TabPanel.Size = UDim2.new(0.2, 0, 1, 0)
+TabPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TabPanel.BorderSizePixel = 0
+TabPanel.Parent = MainFrame
 
-SpinBtn.MouseButton1Click:Connect(function()
-    SpinActive = not SpinActive
-    if SpinActive then
-        if RootPart then FixedY = RootPart.Position.Y end
-        SpinBtn.Text = "Гіпер-Крутилка: ON"
-        SpinBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    else
-        SpinBtn.Text = "Гіпер-Крутилка: OFF"
-        SpinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+-- Контейнер для вмісту вкладок (справа)
+local ContentPanel = Instance.new("Frame")
+ContentPanel.Size = UDim2.new(0.8, 0, 1, 0)
+ContentPanel.Position = UDim2.new(0.2, 0, 0, 0)
+ContentPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ContentPanel.BorderSizePixel = 0
+ContentPanel.Parent = MainFrame
+
+local Tabs = {}
+local CurrentTab = nil
+
+local function CreateTab(name)
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Size = UDim2.new(1, 0, 0, 50)
+    TabBtn.Position = UDim2.new(0, 0, 0, #Tabs * 50)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    TabBtn.Text = name
+    TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TabBtn.Font = Enum.Font.SourceSansBold
+    TabBtn.TextSize = 16
+    TabBtn.Parent = TabPanel
+
+    local TabContent = Instance.new("ScrollingFrame")
+    TabContent.Size = UDim2.new(0.95, 0, 0.9, 0)
+    TabContent.Position = UDim2.new(0.025, 0, 0.05, 0)
+    TabContent.BackgroundTransparency = 1
+    TabContent.CanvasSize = UDim2.new(0, 0, 2, 0)
+    TabContent.Visible = false
+    TabContent.Parent = ContentPanel
+
+    local UIList = Instance.new("UIListLayout")
+    UIList.Padding = UDim.new(0, 10)
+    UIList.Parent = TabContent
+
+    TabBtn.MouseButton1Click:Connect(function()
+        if CurrentTab then
+            CurrentTab.Content.Visible = false
+            CurrentTab.Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        end
+        TabContent.Visible = true
+        TabBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        CurrentTab = {Btn = TabBtn, Content = TabContent}
+    end)
+
+    table.insert(Tabs, {Btn = TabBtn, Content = TabContent})
+    return TabContent
+end
+
+local function CreateToggle(parent, text, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.9, 0, 0, 45)
+    Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Btn.Text = text .. " [OFF]"
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Font = Enum.Font.SourceSans
+    Btn.TextSize = 16
+    Btn.Parent = parent
+
+    local active = false
+    Btn.MouseButton1Click:Connect(function()
+        active = not active
+        if active then
+            Btn.Text = text .. " [ON]"
+            Btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        else
+            Btn.Text = text .. " [OFF]"
+            Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        end
+        callback(active)
+    end)
+end
+
+local function CreateButton(parent, text, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.9, 0, 0, 45)
+    Btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Font = Enum.Font.SourceSans
+    Btn.TextSize = 16
+    Btn.Parent = parent
+    Btn.MouseButton1Click:Connect(callback)
+end
+
+-- СТВОРЕННЯ ВКЛАДОК
+local TabMain = CreateTab("Головне (Main)")
+local TabCombat = CreateTab("Бой (Combat)")
+local TabTeleports = CreateTab("Телепорти")
+local TabVisuals = CreateTab("Візуали (ESP)")
+local TabFun = CreateTab("Фан функції")
+
+-- ВКЛАДКА MAIN
+CreateToggle(TabMain, "Ноукліп (Крізь стіни)", function(val) Noclip = val end)
+CreateButton(TabMain, "Швидкість +10", function() Speed = Speed + 10 UpdateMovement() end)
+CreateButton(TabMain, "Швидкість -10", function() Speed = math.max(Speed - 10, 16) UpdateMovement() end)
+CreateButton(TabMain, "Скинути Швидкість", function() Speed = 16 UpdateMovement() end)
+CreateButton(TabMain, "Високий Стрибок (+20)", function() Jump = Jump + 20 UpdateMovement() end)
+
+-- Авто-збір монет
+CreateToggle(TabMain, "Авто-фарм монет", function(val)
+    AutoFarm = val
+    task.spawn(function()
+        while AutoFarm do
+            local Container = workspace:FindFirstChild("Normal") or workspace:FindFirstChild("SandBox")
+            if Container and Container:FindFirstChild("CoinContainer") then
+                for _, coin in pairs(Container.CoinContainer:GetChildren()) do
+                    if coin:IsA("BasePart") and RootPart and AutoFarm then
+                        RootPart.CFrame = coin.CFrame
+                        task.wait(0.3)
+                    end
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+end)
+
+-- ВКЛАДКА COMBAT
+CreateToggle(TabCombat, "Кілл-Аура (Вбивати навколо)", function(val)
+    KillAura = val
+    task.spawn(function()
+        while KillAura do
+            local Knife = Character:FindFirstChild("Knife") or Player.Backpack:FindFirstChild("Knife")
+            if Knife and RootPart then
+                for _, p in pairs(game.Players:GetPlayers()) do
+                    if p ~= Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local dist = (RootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                        if dist < 15 then
+                            Knife.Parent = Character
+                            Knife:Activate()
+                        end
+                    end
+                end
+            end
+            task.wait(0.1)
+        end
+    end)
+end)
+
+CreateButton(TabCombat, "Взяти Пістолет (Якщо ти Шериф)", function()
+    local Gun = Player.Backpack:FindFirstChild("Gun")
+    if Gun then Gun.Parent = Character end
+end)
+
+-- ВКЛАДКА TELEPORTS
+CreateButton(TabTeleports, "ТП до Шерифа / Пістолета", function()
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChild("Gun") and p.Character:FindFirstChild("HumanoidRootPart") then
+            RootPart.CFrame = p.Character.HumanoidRootPart.CFrame
+        end
+    end
+    local Map = workspace:FindFirstChild("Normal") or workspace:FindFirstChild("SandBox")
+    if Map and Map:FindFirstChild("GunDrop") then
+        RootPart.CFrame = Map.GunDrop.CFrame
     end
 end)
 
-MakeSmallCube()
-UpdateWalkSpeed()
+CreateButton(TabTeleports, "ТП до Вбивці (Murderer)", function()
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChild("Knife") and p.Character:FindFirstChild("HumanoidRootPart") then
+            RootPart.CFrame = p.Character.HumanoidRootPart.CFrame
+        end
+    end
+end)
+
+CreateButton(TabTeleports, "ТП у Лобі", function()
+    local Lobby = workspace:FindFirstChild("Lobby")
+    if Lobby and Lobby:FindFirstChild("SpawnLocation") then
+        RootPart.CFrame = Lobby.SpawnLocation.CFrame + Vector3.new(0, 3, 0)
+    end
+end)
+
+-- ВКЛАДКА VISUALS
+CreateToggle(TabVisuals, "ESP на всіх гравців", function(val)
+    XrayActive = val
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= Player and p.Character then
+            if val then
+                local Highlight = Instance.new("Highlight")
+                Highlight.Name = "MM2_ESP"
+                Highlight.FillColor = Color3.fromRGB(0, 255, 255)
+                if p.Character:FindFirstChild("Knife") then Highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                elseif p.Character:FindFirstChild("Gun") then Highlight.FillColor = Color3.fromRGB(0, 0, 255) end
+                Highlight.Parent = p.Character
+            else
+                if p.Character:FindFirstChild("MM2_ESP") then p.Character.MM2_ESP:Destroy() end
+            end
+        end
+    end
+end)
+
+-- ВКЛАДКА FUN
+CreateToggle(TabFun, "Гіпер-Крутилка на місці", function(val)
+    SpinActive = val
+    if SpinActive and RootPart then FixedY = RootPart.Position.Y end
+end)
+
+CreateButton(TabFun, "Зробити тіло Маленьким Кубом", function()
+    for _, part in pairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then part.Transparency = 1
+        elseif part:IsA("CharacterMesh") or part:IsA("Shirt") or part:IsA("Pants") or part:IsA("Accessory") then part:Destroy() end
+    end
+    if not RootPart:FindFirstChild("VisualCube") then
+        local Cube = Instance.new("Part")
+        Cube.Name = "VisualCube"
+        Cube.Size = Vector3.new(1.5, 1.5, 1.5)
+        Cube.Color = Color3.fromRGB(85, 255, 85)
+        Cube.CanCollide = false
+        Cube.Parent = RootPart
+        local Weld = Instance.new("Weld")
+        Weld.Part0 = RootPart Weld.Part1 = Cube Weld.Parent = Cube
+    end
+end)
+
+-- Відкриваємо першу вкладку за замовчуванням
+Tabs[1].Content.Visible = true
+CurrentTab = {Btn = Tabs[1].Btn, Content = Tabs[1].Content}
+Tabs[1].Btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+UpdateMovement()
