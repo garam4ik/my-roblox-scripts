@@ -6,10 +6,10 @@ local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
-local SpinActive = false
-local Speed = 150 -- Велика швидкість бігу
+local PushActive = false
+local Speed = 150
 
--- Створення платформи (кубика) під гравцем
+-- Створення платформи під гравцем
 local Platform = Instance.new("Part")
 Platform.Size = Vector3.new(4, 1, 4)
 Platform.Anchored = true
@@ -17,13 +17,8 @@ Platform.Transparency = 1
 Platform.CanCollide = false
 Platform.Parent = workspace
 
--- Обертання через BodyAngularVelocity
-local Spin = Instance.new("BodyAngularVelocity")
-Spin.MaxTorque = Vector3.new(0, math.huge, 0)
-Spin.AngularVelocity = Vector3.new(0, 1000000, 0) -- Шалена швидкість обертання
-
--- Функція перетворення на Квадрат
-local function MakeCube()
+-- Функція перетворення на МАЛЕНЬКИЙ квадрат
+local function MakeSmallCube()
     if Character then
         for _, part in pairs(Character:GetDescendants()) do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
@@ -33,12 +28,11 @@ local function MakeCube()
             end
         end
         
-        -- Створюємо візуальний куб замість тіла
         if not RootPart:FindFirstChild("VisualCube") then
             local Cube = Instance.new("Part")
             Cube.Name = "VisualCube"
-            Cube.Size = Vector3.new(4, 4, 4)
-            Cube.Color = Color3.fromRGB(150, 150, 150)
+            Cube.Size = Vector3.new(1.2, 1.2, 1.2) -- Маленький розмір кубика
+            Cube.Color = Color3.fromRGB(255, 85, 85) -- Робимо його яскравим
             Cube.CanCollide = false
             Cube.Parent = RootPart
             
@@ -60,34 +54,65 @@ Player.CharacterAdded:Connect(function(char)
     Humanoid = char:WaitForChild("Humanoid")
     RootPart = char:WaitForChild("HumanoidRootPart")
     task.wait(0.5)
-    MakeCube()
+    MakeSmallCube()
     UpdateWalkSpeed()
 end)
 
--- Головний цикл (Ноукліп, кубик під ногами, обертання)
+-- Логіка виштовхування інших гравців (Кілл-аура / Штовхач)
+task.spawn(function()
+    while true do
+        if PushActive and RootPart then
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local EnemyRoot = p.Character.HumanoidRootPart
+                    local Distance = (RootPart.Position - EnemyRoot.Position).Magnitude
+                    
+                    -- Якщо гравець ближче ніж на 12 studs, він летить геть
+                    if Distance < 12 then
+                        local Direction = (EnemyRoot.Position - RootPart.Position).Unit
+                        -- Створюємо потужний імпульс швидкості для ворога
+                        local Velocity = Instance.new("LinearVelocity")
+                        Velocity.MaxForce = math.huge
+                        Velocity.VectorVelocity = (Direction + Vector3.new(0, 1, 0)).Unit * 500 -- Напрямок польоту вгору і вбік
+                        
+                        local Attachment = Instance.new("Attachment")
+                        Attachment.Parent = EnemyRoot
+                        Velocity.Attachment0 = Attachment
+                        Velocity.Parent = EnemyRoot
+                        
+                        -- Видаляємо імпульс через 0.1 сек, щоб вони просто летіли по інерції
+                        task.defer(function()
+                            task.wait(0.1)
+                            Velocity:Destroy()
+                            Attachment:Destroy()
+                        end)
+                    end
+                end
+            end
+        end
+        task.wait(0.05)
+    end
+end)
+
+-- Основний цикл Ноукліпу та Платформи
 game:GetService("RunService").Stepped:Connect(function()
     if Character and Humanoid and RootPart then
-        if SpinActive then
-            -- Постійний Ноукліп
+        if PushActive then
             for _, part in pairs(Character:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = false
                 end
             end
-            -- Активуємо платформу під ногами
             Platform.CanCollide = true
-            Platform.CFrame = RootPart.CFrame * CFrame.new(0, -3.5, 0)
-            -- Вмикаємо крутилку
-            Spin.Parent = RootPart
+            Platform.CFrame = RootPart.CFrame * CFrame.new(0, -2.1, 0)
         else
             Platform.CanCollide = false
             Platform.CFrame = CFrame.new(0, 9999, 0)
-            Spin.Parent = nil
         end
     end
 end)
 
--- Створення інтерфейсу (GUI)
+-- Створення GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "CocoTT2_Gui"
 local success, _ = pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
@@ -105,32 +130,32 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.Text = "Coco's TT 2"
+Title.Text = "Coco's Killer Cube"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
+Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
 Title.Parent = MainFrame
 
-local SpinBtn = Instance.new("TextButton")
-SpinBtn.Size = UDim2.new(0.9, 0, 0, 40)
-SpinBtn.Position = UDim2.new(0.05, 0, 0.35, 0)
-SpinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpinBtn.Text = "Гіпер-Крутилка: OFF"
-SpinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpinBtn.Font = Enum.Font.SourceSans
-SpinBtn.TextSize = 14
-SpinBtn.Parent = MainFrame
+local PushBtn = Instance.new("TextButton")
+PushBtn.Size = UDim2.new(0.9, 0, 0, 50)
+PushBtn.Position = UDim2.new(0.05, 0, 0.35, 0)
+PushBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+PushBtn.Text = "Штовхач гравців: OFF"
+PushBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PushBtn.Font = Enum.Font.SourceSans
+PushBtn.TextSize = 14
+PushBtn.Parent = MainFrame
 
-SpinBtn.MouseButton1Click:Connect(function()
-    SpinActive = not SpinActive
-    if SpinActive then
-        SpinBtn.Text = "Гіпер-Крутилка: ON"
-        SpinBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+PushBtn.MouseButton1Click:Connect(function()
+    PushActive = not PushActive
+    if PushActive then
+        PushBtn.Text = "Штовхач гравців: ON"
+        PushBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
     else
-        SpinBtn.Text = "Гіпер-Крутилка: OFF"
-        SpinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        PushBtn.Text = "Штовхач гравців: OFF"
+        PushBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
 end)
 
-MakeCube()
+MakeSmallCube()
 UpdateWalkSpeed()
