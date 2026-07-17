@@ -81,7 +81,17 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
--- Кнопка закриття меню (мінімізація)
+-- Логіка приховування на кнопку Control (Ctrl)
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+            MainFrame.Visible = not MainFrame.Visible
+        end
+    end
+end)
+
+-- Кнопка закриття (тепер просто приховує меню, його можна повернути на Ctrl)
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 40, 0, 40)
 CloseBtn.Position = UDim2.new(1, -40, 0, 0)
@@ -91,7 +101,7 @@ CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Font = Enum.Font.SourceSansBold
 CloseBtn.TextSize = 20
 CloseBtn.Parent = MainFrame
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
 -- Панель вкладок (зліва)
 local TabPanel = Instance.new("Frame")
@@ -198,7 +208,6 @@ CreateButton(TabMain, "Швидкість -10", function() Speed = math.max(Spee
 CreateButton(TabMain, "Скинути Швидкість", function() Speed = 16 UpdateMovement() end)
 CreateButton(TabMain, "Високий Стрибок (+20)", function() Jump = Jump + 20 UpdateMovement() end)
 
--- Авто-збір монет
 CreateToggle(TabMain, "Авто-фарм монет", function(val)
     AutoFarm = val
     task.spawn(function()
